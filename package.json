@@ -1,19 +1,29 @@
 {
-  "name": "docucode-cli",
-  "version": "1.0.0",
-  "description": "Learn more on https://docucode.dev",
-  "main": "index.js",
+  "name": "docucode",
+  "version": "0.0.1",
+  "description": "A CLI tool to auto generate documentation for your code. Learn more on https://docucode.dev",
+  "main": "./dist/index.js",
+  "bin": {
+    "docucode": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "tsx src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "commander": "^14.0.2"
   }
 }
