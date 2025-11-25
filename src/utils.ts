@@ -1,9 +1,84 @@
 import { resolve, join, relative, dirname, sep } from 'path';
-import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
+import { readdirSync, statSync, readFileSync, existsSync, openSync, readSync, closeSync } from 'fs';
 import { NormalisedPath } from './normalisedPath';
+import { MAX_SOURCE_FILE_SIZE_BYTES, SOURCE_CODE_EXTENSIONS } from './constants';
 
 export function getFullPathFromPath(path: string): string {
     return resolve(path);
+}
+
+function isProbablyTextFile(filePath: string): boolean {
+    let fd: number | undefined;
+    try {
+        fd = openSync(filePath, 'r');
+        const buffer = Buffer.alloc(4096);
+        const bytesRead = readSync(fd, buffer, 0, buffer.length, 0);
+
+        if (bytesRead === 0) {
+            // Empty file – treat as text
+            return true;
+        }
+
+        let nonPrintable = 0;
+        for (let i = 0; i < bytesRead; i++) {
+            const byte = buffer[i]!;
+            if (byte === 0) {
+                // NUL byte is a very strong binary signal
+                return false;
+            }
+            // Allow common control chars: tab (9), LF (10), CR (13)
+            if (byte < 7 || (byte > 13 && byte < 32) || byte === 127) {
+                nonPrintable++;
+            }
+        }
+
+        const ratio = nonPrintable / bytesRead;
+        // Heuristic: if too many non-printable chars, assume binary
+        return ratio < 0.3;
+    } catch {
+        // On error, be conservative and treat as non-text
+        return false;
+    } finally {
+        if (fd !== undefined) {
+            try {
+                closeSync(fd);
+            } catch {
+                // ignore close errors
+            }
+        }
+    }
+}
+
+function isSourceCodeFile(filePath: string): boolean {
+    let stats;
+    try {
+        stats = statSync(filePath);
+    } catch {
+        return false;
+    }
+
+    if (!stats.isFile()) {
+        return false;
+    }
+
+    if (stats.size > MAX_SOURCE_FILE_SIZE_BYTES) {
+        return false;
+    }
+
+    const lastDotIndex = filePath.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+        return false;
+    }
+    const ext = filePath.slice(lastDotIndex + 1).toLowerCase();
+    if (!SOURCE_CODE_EXTENSIONS.has(ext)) {
+        return false;
+    }
+
+    if (!isProbablyTextFile(filePath)) {
+        return false;
+    }
+
+    return true;
 }
 
 function gitignorePatternToRegex(pattern: string): RegExp | null {
@@ -195,6 +270,7 @@ function findAllFilesInPathAndSubPathsThatAreNotInGitIgnoreHelper(path: string):
 
 export function findAllFilesInPathAndSubPathsThatAreNotInGitIgnore(basePath: string): NormalisedPath[] {
     let result = findAllFilesInPathAndSubPathsThatAreNotInGitIgnoreHelper(basePath);
+    result = result.filter(isSourceCodeFile);
     result = result.map(p => relative(basePath, p));
     return result.map(p => new NormalisedPath(p, basePath));
 }

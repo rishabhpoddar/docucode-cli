@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { findAllFilesInPathAndSubPathsThatAreNotInGitIgnore, getFullPathFromPath } from './utils';
+import { SOURCE_CODE_EXTENSIONS } from './constants';
 
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 
@@ -22,8 +23,19 @@ async function main() {
     }
     path = getFullPathFromPath(path);
 
+    if (!existsSync(path)) {
+        throw new Error("The given path does not exist. Please provide a valid path.");
+    }
+
     const sourceCodeFilesRelativePaths = findAllFilesInPathAndSubPathsThatAreNotInGitIgnore(path);
-    console.log(sourceCodeFilesRelativePaths.map(i => i.getFullPath()));
+    if (sourceCodeFilesRelativePaths.length === 0) {
+        throw new Error("No source code files found in the given path. Supported file extensions: " + Array.from(SOURCE_CODE_EXTENSIONS).join(', '));
+    }
+
+    // TODO:...
 }
 
-main();
+main().catch(error => {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+});
