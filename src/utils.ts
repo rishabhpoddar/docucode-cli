@@ -74,9 +74,9 @@ function isSourceCodeFile(filePath: string): boolean {
         return false;
     }
 
-    if (!isProbablyTextFile(filePath)) {
-        return false;
-    }
+    // if (!isProbablyTextFile(filePath)) {
+    //     return false;
+    // }
 
     return true;
 }
