@@ -152,10 +152,23 @@ function isIgnored(
     gitignoreFiles: Array<{ path: string; content: string }>,
     isDirectory: boolean
 ): boolean {
-    // Always ignore anything inside a .git folder
     const normalizedPath = resolve(filePath);
     const pathSegments = normalizedPath.split(sep);
+
+    // Always ignore anything inside a .git folder
     if (pathSegments.includes('.git')) {
+        return true;
+    }
+
+    const baseName = pathSegments[pathSegments.length - 1] || '';
+
+    // Ignore hidden files/directories (starting with '.')
+    if (baseName.startsWith('.') && baseName !== '.' && baseName !== '..') {
+        return true;
+    }
+
+    // Ignore anything inside tmp or temp folders
+    if (pathSegments.includes('tmp') || pathSegments.includes('temp')) {
         return true;
     }
 
